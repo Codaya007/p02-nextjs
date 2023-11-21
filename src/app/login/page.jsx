@@ -2,20 +2,22 @@
 import { object, string } from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForm } from "react-hook-form";
-// import Image from "next/image";
 import Link from "next/link";
-import { API_BASEURL } from "@/constants";
 import { useRouter } from "next/navigation";
+import { login } from "@/services/auth.service";
+import { useAuth } from "@/context/AuthContext";
+
+const validationSchema = object().shape({
+  identificador: string().matches(/^\d{10}$/, "Ingrese un identificador válido de 10 caracteres")
+    .required("Ingrese un identificador"),
+  clave: string()
+    .required("Contraseña requerida"),
+});
 
 export default function Login() {
-  const router = useRouter();
-  const validationSchema = object().shape({
-    identificador: string().matches(/^\d{10}$/, "Ingrese un identificador válido de 10 caracteres")
-      .required("Ingrese un identificador"),
-    clave: string()
-      .required("Contraseña requerida"),
-  });
+  const { user, token, loginUser, logoutUser } = useAuth();
 
+  const router = useRouter();
   const formOptions = {
     resolver: yupResolver(validationSchema),
     // mode: "onBlur",
@@ -25,38 +27,22 @@ export default function Login() {
   const { errors } = formState;
 
   const handleLogin = async (data) => {
-    console.log({ data });
+    try {
+      const loginResponse = await login(data);
 
-    const url = `${API_BASEURL}?funcion=materias`;
-
-    const body = JSON.stringify({ ...data, "funcion": "sesion" })
-    const loginResponse = await fetch(url, {
-      method: "POST",
-      body,
-    }).then(res => res.json());
-    const { jwt, code, msg } = loginResponse;
-
-    if (code === 200) {
       // Si tuve una respuesta exitosa, almaceno la info obtenida
-      localStorage.setItem("token", jwt);
+      localStorage.setItem("token", loginResponse.jwt);
       localStorage.setItem("user", JSON.stringify(loginResponse));
+      loginUser(loginResponse, loginResponse.jwt);
 
       router.push("/signatures");
-    } else {
-      alert(`Ha ocurrido un error al iniciar sesión: ${msg || "Error desconocido"}`);
+    } catch (error) {
+      alert(error.message);
     }
-
   }
 
   return (
     <div className="normal-form">
-      {/* <section>
-        <Image
-          src={"/TempLogo.png"}
-          width={120}
-          height={70}
-        />
-      </section> */}
       <form onSubmit={handleSubmit(handleLogin)}>
         <h1 className="title-form">Iniciar sesión</h1>
         <div className="form-item">

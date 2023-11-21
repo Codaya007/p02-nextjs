@@ -1,25 +1,29 @@
 "use client";
 import React from "react";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export default function NavBar() {
-  const [user, setUser] = useState(null);
+  // const [user, setUser] = useState(null);
+  const { user, token, loginUser, logoutUser } = useAuth();
 
   useEffect(() => {
     // Verifica si hay algo en el localStorage al cargar el componente
     const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
+
     if (storedUser) {
-      const jsonUser = JSON.parse(storedUser)
-      console.log({ jsonUser });
-      setUser(jsonUser);
+      const jsonUser = JSON.parse(storedUser);
+
+      loginUser(jsonUser, storedToken);
     }
   }, []);
 
   const handleLogout = () => {
     localStorage.clear();
-    setUser(null)
+    logoutUser();
   }
 
   return (

@@ -3,11 +3,11 @@ import { object, string } from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
-import { API_BASEURL } from "@/constants";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { fetchSignatures } from "@/app/signatures/page";
-import { fetchDocument } from "../../view/[id]/page";
+import { getAllSignatures } from "@/services/signature.service";
+import { getDocumentById, updateDocumentById } from "@/services/document.service";
+import { useAuth } from "@/context/AuthContext";
 
 // export const IVA_PERCENTAJE = 0.12;
 const PRICE_REGEX = /^\d{1,}[.,]\d{1,2}$/;
@@ -23,7 +23,7 @@ const validationSchema = object().shape({
   isbn: string().required("El ISBN es requerido"),
   paginas: string().matches(PAGE_REGEX, "Ingrese un número de páginas válido").required("El número de páginas es requerido"),
   foto: string().url("Ingrese una URL válida para la foto").required("La URL de la foto es requerida"),
-  materia: string(),
+  materia: string().required("Materia requerida"),
 });
 
 export default function DocumentForm({ initialValues }) {
@@ -35,52 +35,23 @@ export default function DocumentForm({ initialValues }) {
     defaultValues: initialValues || {},
   };
   const [signatures, setSignatures] = useState([]);
+  const { user, token } = useAuth();
   const { register, handleSubmit, formState, reset } = useForm(formOptions);
   const { errors } = formState;
-  let token = null;
-  let user = null;
-
-  if (window !== undefined) {
-    token = window.localStorage.getItem("token");
-    user = window.localStorage.user ? JSON.parse(localStorage.getItem("user")) : null;
-  }
 
   const onSubmit = async (data) => {
-    console.log({ data });
+    try {
+      await updateDocumentById(data, user?.external, external, token);
 
-    // Ejemplo de URL para la creación de un nuevo documento
-    const url = `${API_BASEURL}`;
-
-    const body = {
-      ...data,
-      "user": user?.external,
-      external,
-      "funcion": "modificarDocumento",
-    }
-
-    console.log({ url, body });
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "TOKEN-KEY": token,
-      },
-      body: JSON.stringify(body),
-    }).then((res) => res.json());
-
-    const { code, mensaje } = response;
-
-    console.log(response);
-
-    // Redireccionar o mostrar un mensaje de éxito/error según sea necesario
-    if (code === 200)
       router.push("/documents");
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   useEffect(() => {
     const getSignatures = async () => {
-      const sigs = await fetchSignatures();
+      const sigs = await getAllSignatures();
 
       setSignatures(sigs)
     }
@@ -89,14 +60,15 @@ export default function DocumentForm({ initialValues }) {
   }, []);
 
   useEffect(() => {
-    const getDocument = async () => {
-      const document = await fetchDocument(external, token);
+    const fetchDocument = async () => {
+      const document = await getDocumentById(external, token);
 
       reset({ ...document, materia: null })
     }
-
-    getDocument();
-  }, []);
+    if (token) {
+      fetchDocument();
+    }
+  }, [token]);
 
   return (
     <div className="normal-form document-form-container">
@@ -136,6 +108,7 @@ export default function DocumentForm({ initialValues }) {
               <select  {...register("materia")} >
                 {signatures.map(signature => <option value={signature.external_id} key={signature.external_id}>{signature.nombre}</option>)}
               </select>
+              {errors.materia && <span className="validation-error">{errors.materia.message}</span>}
             </div>
             <div className="form-item">
               <label>Subtotal</label>

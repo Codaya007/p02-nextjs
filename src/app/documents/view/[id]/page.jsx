@@ -1,54 +1,22 @@
 "use client";
+import { useAuth } from "@/context/AuthContext";
+import { getDocumentById } from "@/services/document.service";
 import Link from "next/link";
-import { API_BASEURL } from "@/constants";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-// import { useRouter } from 'next/router';
 
-export const fetchDocument = async (external, token) => {
-  try {
-    // Ejemplo de URL para la creación de un nuevo documento
-    const url = `${API_BASEURL}?funcion=obtener_documento&external=${external}`;
-    const response = await fetch(url, {
-      method: "GET", // Cambiar a "PUT" para edición
-      headers: {
-        "Content-Type": "application/json",
-        "TOKEN-KEY": token,
-      },
-    }).then((res) => res.json());
-
-    console.log({ response });
-
-    const { code, mensaje, datos = [] } = response;
-
-    if (code === 200) {
-      const document = datos[0];
-
-      return document;
-    } else {
-      throw new Error(mensaje);
-    }
-  } catch (error) {
-    throw new Error(error.message || "Algo salió mal");
-  }
-};
-
-export default function DocumentForm({ initialValues }) {
+export default function DocumentForm({ }) {
   const router = useRouter();
   const params = useParams();
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(false);
   const external = params?.id;
-  let token = null;
+  const { token } = useAuth();
 
-  if (window !== undefined) {
-    token = window.localStorage.getItem("token");
-  }
-
-  const getDocument = async () => {
+  const fetchDocument = async () => {
     setLoading(true);
     try {
-      const doc = await fetchDocument(external, token);
+      const doc = await getDocumentById(external, token);
 
       setDocument(doc);
     } catch (error) {
@@ -60,7 +28,7 @@ export default function DocumentForm({ initialValues }) {
 
   useEffect(() => {
     if (token)
-      getDocument();
+      fetchDocument();
   }, [token]);
 
   return (
@@ -74,41 +42,41 @@ export default function DocumentForm({ initialValues }) {
               <section>
                 <div className="form-item">
                   <label>Título</label>
-                  <input contentEditable={false} value={document?.titulo} type="text" />
+                  <input readOnly={true} contentEditable={false} value={document?.titulo} type="text" />
                 </div>
                 <div className="form-item">
                   <label>Autor</label>
-                  <input contentEditable={false} type="text" value={document?.autor} />
+                  <input readOnly={true} contentEditable={false} type="text" value={document?.autor} />
                 </div>
                 <div className="form-item">
                   <label>ISBN</label>
-                  <input value={document?.isbn} contentEditable={false} type="text" />
+                  <input readOnly={true} value={document?.isbn} contentEditable={false} type="text" />
                 </div>
                 <div className="form-item">
                   <label>Número de Páginas</label>
-                  <input value={document?.paginas} contentEditable={false} type="text" />
+                  <input readOnly={true} value={document?.paginas} contentEditable={false} type="text" />
                 </div>
                 <div className="form-item">
                   <label>Foto (URL)</label>
-                  <input value={document?.foto} contentEditable={false} type="text" />
+                  <input readOnly={true} value={document?.foto} contentEditable={false} type="text" />
                 </div>
               </section>
               <section>
                 <div className="form-item">
                   <label>Subtotal</label>
-                  <input value={document?.subtotal} contentEditable={false} type="text" step="0.01" />
+                  <input readOnly={true} value={document?.subtotal} contentEditable={false} type="text" step="0.01" />
                 </div>
                 <div className="form-item">
                   <label>IVA</label>
-                  <input value={document?.iva} contentEditable={false} type="text" step="0.01" />
+                  <input readOnly={true} value={document?.iva} contentEditable={false} type="text" step="0.01" />
                 </div>
                 <div className="form-item">
                   <label>Descuento</label>
-                  <input value={document?.descuento} contentEditable={false} type="text" step="0.01" />
+                  <input readOnly={true} value={document?.descuento} contentEditable={false} type="text" step="0.01" />
                 </div>
                 <div className="form-item">
                   <label>Total</label>
-                  <input value={document?.total} contentEditable={false} type="text" />
+                  <input readOnly={true} value={document?.total} contentEditable={false} type="text" />
                 </div>
               </section>
             </div>

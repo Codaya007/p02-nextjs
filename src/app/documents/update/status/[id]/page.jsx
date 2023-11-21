@@ -1,52 +1,34 @@
 "use client";
 import Link from "next/link";
-import { API_BASEURL, FORMAT_ESTADO_DOCUMENT } from "@/constants";
+import { FORMAT_ESTADO_DOCUMENT } from "@/constants";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { fetchDocument } from "../../../view/[id]/page";
+import { getDocumentById, updateStatusDocumentById } from "@/services/document.service";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DocumentForm({ initialValues }) {
   const router = useRouter();
   const { id: external } = useParams();
-  let token = null;
   const [document, setDocument] = useState(null);
   const [status, setStatus] = useState(false);
-
-  if (window !== undefined) {
-    token = window.localStorage.getItem("token");
-  }
+  const { token } = useAuth();
 
   const handleChangeStatus = async (e) => {
-    console.log({ e });
     e.preventDefault();
 
-    // Ejemplo de URL para la creación de un nuevo documento
-    const url = `${API_BASEURL}?funcion=cambiar_estado&external=${external}&estado=${status === "1"}`;
+    try {
+      await updateStatusDocumentById(external, status, token);
 
-    console.log({ url });
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        // "Content-Type": "application/json",
-        "TOKEN-KEY": token,
-      },
-    }).then((res) => res.json());
-
-    console.log(response);
-
-    const { code, mensaje } = response;
-
-    // Redireccionar o mostrar un mensaje de éxito/error según sea necesario
-    if (code === 200) {
       router.push("/documents");
+    } catch (error) {
+      alert(error.message)
     }
   };
 
   useEffect(() => {
     const getDocument = async () => {
       try {
-        const document = await fetchDocument(external, token);
+        const document = await getDocumentById(external, token);
 
         setDocument({ ...document, materia: null })
         setStatus(document.estado);
@@ -55,8 +37,9 @@ export default function DocumentForm({ initialValues }) {
       }
     }
 
-    getDocument();
-  }, []);
+    if (token)
+      getDocument();
+  }, [token]);
 
   const onChange = e => {
     setStatus(e.target.value);

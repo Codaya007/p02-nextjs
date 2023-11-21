@@ -1,5 +1,5 @@
 "use client";
-import { API_BASEURL } from "@/constants";
+import { getAllSignatures } from "@/services/signature.service";
 import { useEffect, useState } from "react";
 
 export function CardSignature({ external_id, estado, nombre, i }) {
@@ -12,28 +12,11 @@ export function CardSignature({ external_id, estado, nombre, i }) {
   </div>
 }
 
-export const fetchSignatures = async () => {
-  const url = `${API_BASEURL}?funcion=materias`;
-
-  const signaturesResponse = await fetch(url, {
-    method: "GET",
-  }).then(res => res.json());
-
-  // console.log({ signaturesResponse });
-
-  const { code, datos } = signaturesResponse;
-
-  if (code === 200) {
-    // setSignatures(datos)
-    return datos;
-  }
-}
-
 export default function Signatures() {
   const [signatures, setSignatures] = useState(null);
 
   const loadSignatures = async () => {
-    const signatures = await fetchSignatures();
+    const signatures = await getAllSignatures();
 
     setSignatures(signatures)
   }

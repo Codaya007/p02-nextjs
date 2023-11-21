@@ -1,8 +1,10 @@
 "use client";
-import { API_BASEURL, FORMAT_ESTADO_DOCUMENT } from "@/constants";
+import { FORMAT_ESTADO_DOCUMENT } from "@/constants";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getAllDocuments } from "@/services/document.service";
+import { useAuth } from "@/context/AuthContext";
 
 export const DOCUMENT_EXAMPLE = {
   "titulo": "El marino que perdió la gracia del mar",
@@ -70,58 +72,26 @@ export function CardDocument({
   </article>
 }
 
-const fetchDocuments = async (userExternal, token) => {
-  const url = `${API_BASEURL}?funcion=listar_documento_user&external=${userExternal}`;
-
-  const documentsResponse = await fetch(url, {
-    method: "GET",
-    headers: {
-      "TOKEN-KEY": token,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    }
-  }).then(res => res.json());
-
-  console.log({ documentsResponse });
-
-  const { code, datos, mensaje } = documentsResponse;
-
-  if (code === 200) {
-    return datos;
-  }
-
-  throw new Error(mensaje || "Algo salió mal")
-}
-
 export default function Documents() {
-  const [documents, setDocuments] = useState([DOCUMENT_EXAMPLE, DOCUMENT_EXAMPLE]);
-  // const [documents, setDocuments] = useState(null);
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  // const [documents, setDocuments] = useState([DOCUMENT_EXAMPLE, DOCUMENT_EXAMPLE]);
+  const [documents, setDocuments] = useState(null);
+  const { user, token } = useAuth();
 
-  useEffect(() => {
-    // Verifica si hay algo en el localStorage al cargar el componente
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+  const fetchDocuments = async () => {
+    try {
+      const docs = await getAllDocuments(user?.external, token);
 
-    if (storedUser) {
-      const jsonUser = JSON.parse(storedUser)
-      setUser(jsonUser);
-      setToken(token);
+      setDocuments(docs);
+    } catch (error) {
+      alert(error.message);
     }
-  }, []);
-
-  const getDocuments = async () => {
-    const docs = await fetchDocuments(user?.external, token);
-
-    setDocuments(docs)
   }
 
   useEffect(() => {
     if (user) {
-      getDocuments();
+      fetchDocuments();
     } else {
-      setDocuments([DOCUMENT_EXAMPLE])
+      setDocuments(null)
     }
   }, [user]);
 
@@ -131,13 +101,15 @@ export default function Documents() {
       <div className="buttons">
         <Link href={"/documents/create"} className="button-primary"> + Crear nuevo</Link>
       </div>
+      {!user && <div><Link href={"/login"}>INICIE SESIÓN</Link> PARA PODER CARGAR LOS DOCUMENTOS</div>}
       {documents ?
         <div className="items-container">
           {
             documents.map((doc, i) => <CardDocument {...doc} key={i} />)
           }
-        </div> :
-        <div>No hay documentos</div>
-      }    </div>
+        </div>
+        : <div>No hay documentos</div>
+      }
+    </div>
   );
 }
