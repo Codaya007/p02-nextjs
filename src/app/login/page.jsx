@@ -35,7 +35,7 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(loginResponse));
       loginUser(loginResponse, loginResponse.jwt);
 
-      router.push("/signatures");
+      router.push("/documents");
     } catch (error) {
       alert(error.message);
     }

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { createDocument } from "@/services/document.service";
 import { getAllSignatures } from "@/services/signature.service";
 import { useAuth } from "@/context/AuthContext";
+import { calculateIva, calculateTotal, formatearNumero } from "@/utils";
 
 // export const IVA_PERCENTAJE = 0.12;
 const PRICE_REGEX = /^\d{1,}[.,]\d{1,2}$/;
@@ -16,10 +17,10 @@ const PAGE_REGEX = /^\d{1,}$/;
 const validationSchema = object().shape({
   titulo: string().required("El título es requerido"),
   autor: string().required("El autor es requerido"),
-  subtotal: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El subtotal es requerido"),
-  iva: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El IVA es requerido"),
-  descuento: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El descuento es requerido"),
-  total: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El total es requerido"),
+  subtotal: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El subtotal es requerido").default("0.00"),
+  // iva: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El IVA es requerido").default("0.00"),
+  descuento: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El descuento es requerido").default("0.00"),
+  // total: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El total es requerido").default("0.00"),
   isbn: string().required("El ISBN es requerido"),
   paginas: string().matches(PAGE_REGEX, "Ingrese un número de páginas válido").required("El número de páginas es requerido"),
   foto: string().url("Ingrese una URL válida para la foto").required("La URL de la foto es requerida"),
@@ -31,16 +32,25 @@ export default function DocumentForm({ initialValues }) {
   const formOptions = {
     resolver: yupResolver(validationSchema),
     mode: "onChange",
-    defaultValues: initialValues || {},
+    defaultValues: initialValues || { total: "0.00", subtotal: "0.00", iva: "0.00", descuento: "0.00" },
   };
   const [signatures, setSignatures] = useState([]);
-  const { register, handleSubmit, formState } = useForm(formOptions);
+  const [total, setTotal] = useState("0.00");
+  const [iva, setIva] = useState("0.00");
+  const { register, handleSubmit, formState, watch } = useForm(formOptions);
   const { errors } = formState;
   const { user, token } = useAuth();
 
+  const subtotal = watch("subtotal");
+  const descuento = watch("descuento");
+
   const onSubmit = async (data) => {
     try {
-      await createDocument(data, user?.external, token);
+      if (parseFloat(data.descuento) > parseFloat(data.subtotal)) {
+        throw new Error("El descuento no puede ser mayor al subtotal")
+      }
+
+      await createDocument({ ...data, total, iva }, user?.external, token);
 
       router.push("/documents");
     } catch (error) {
@@ -57,6 +67,18 @@ export default function DocumentForm({ initialValues }) {
 
     fetchSignatures();
   }, []);
+
+  useEffect(() => {
+    const onChangeSubtotalOrDiscount = () => {
+      const newTotal = calculateTotal(subtotal, descuento);
+      const newIva = calculateIva(subtotal, descuento);
+
+      setTotal(formatearNumero(newTotal));
+      setIva(formatearNumero(newIva));
+    };
+
+    onChangeSubtotalOrDiscount();
+  }, [subtotal, descuento]);
 
   return (
     <div className="normal-form document-form-container">
@@ -105,8 +127,8 @@ export default function DocumentForm({ initialValues }) {
             </div>
             <div className="form-item">
               <label>IVA</label>
-              <input {...register("iva")} type="number" step="0.01" />
-              {errors.iva && <span className="validation-error">{errors.iva.message}</span>}
+              <input readOnly={true} contentEditable={false} type="number" step="0.01" value={iva} />
+              {/* {errors.iva && <span className="validation-error">{errors.iva.message}</span>} */}
             </div>
             <div className="form-item">
               <label>Descuento</label>
@@ -115,8 +137,8 @@ export default function DocumentForm({ initialValues }) {
             </div>
             <div className="form-item">
               <label>Total</label>
-              <input {...register("total")} type="number" step="0.01" />
-              {errors.total && <span className="validation-error">{errors.total.message}</span>}
+              <input readOnly={true} contentEditable={false} type="number" step="0.01" value={total} />
+              {/* {errors.total && <span className="validation-error">{errors.total.message}</span>} */}
             </div>
           </section>
         </div>

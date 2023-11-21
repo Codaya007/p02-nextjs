@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { getAllSignatures } from "@/services/signature.service";
 import { getDocumentById, updateDocumentById } from "@/services/document.service";
 import { useAuth } from "@/context/AuthContext";
+import { calculateIva, calculateTotal, formatearNumero } from "@/utils";
 
 // export const IVA_PERCENTAJE = 0.12;
 const PRICE_REGEX = /^\d{1,}[.,]\d{1,2}$/;
@@ -17,9 +18,9 @@ const validationSchema = object().shape({
   titulo: string().required("El título es requerido"),
   autor: string().required("El autor es requerido"),
   subtotal: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El subtotal es requerido"),
-  iva: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El IVA es requerido"),
+  // iva: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El IVA es requerido"),
   descuento: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El descuento es requerido"),
-  total: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El total es requerido"),
+  // total: string().matches(PRICE_REGEX, "Ingrese un precio válido como 10.00").required("El total es requerido"),
   isbn: string().required("El ISBN es requerido"),
   paginas: string().matches(PAGE_REGEX, "Ingrese un número de páginas válido").required("El número de páginas es requerido"),
   foto: string().url("Ingrese una URL válida para la foto").required("La URL de la foto es requerida"),
@@ -36,12 +37,20 @@ export default function DocumentForm({ initialValues }) {
   };
   const [signatures, setSignatures] = useState([]);
   const { user, token } = useAuth();
-  const { register, handleSubmit, formState, reset } = useForm(formOptions);
+  const { register, handleSubmit, formState, reset, watch } = useForm(formOptions);
   const { errors } = formState;
+  const [total, setTotal] = useState("0.00");
+  const [iva, setIva] = useState("0.00");
+  const subtotal = watch("subtotal");
+  const descuento = watch("descuento");
 
   const onSubmit = async (data) => {
     try {
-      await updateDocumentById(data, user?.external, external, token);
+      if (parseFloat(data.descuento) > parseFloat(data.subtotal)) {
+        throw new Error("El descuento no puede ser mayor al subtotal")
+      }
+
+      await updateDocumentById({ ...data, total, iva }, user?.external, external, token);
 
       router.push("/documents");
     } catch (error) {
@@ -69,6 +78,18 @@ export default function DocumentForm({ initialValues }) {
       fetchDocument();
     }
   }, [token]);
+
+  useEffect(() => {
+    const onChangeSubtotalOrDiscount = () => {
+      const newTotal = calculateTotal(subtotal, descuento);
+      const newIva = calculateIva(subtotal, descuento);
+
+      setTotal(formatearNumero(newTotal));
+      setIva(formatearNumero(newIva));
+    };
+
+    onChangeSubtotalOrDiscount();
+  }, [subtotal, descuento]);
 
   return (
     <div className="normal-form document-form-container">
@@ -117,8 +138,8 @@ export default function DocumentForm({ initialValues }) {
             </div>
             <div className="form-item">
               <label>IVA</label>
-              <input {...register("iva")} type="number" step="0.01" />
-              {errors.iva && <span className="validation-error">{errors.iva.message}</span>}
+              <input readOnly={true} contentEditable={false} type="number" step="0.01" value={iva} />
+              {/* {errors.iva && <span className="validation-error">{errors.iva.message}</span>} */}
             </div>
             <div className="form-item">
               <label>Descuento</label>
@@ -127,8 +148,8 @@ export default function DocumentForm({ initialValues }) {
             </div>
             <div className="form-item">
               <label>Total</label>
-              <input {...register("total")} type="number" step="0.01" />
-              {errors.total && <span className="validation-error">{errors.total.message}</span>}
+              <input readOnly={true} contentEditable={false} type="number" step="0.01" value={total} />
+              {/* {errors.total && <span className="validation-error">{errors.total.message}</span>} */}
             </div>
           </section>
         </div>
